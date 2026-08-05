@@ -1,5 +1,1 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 900">
- <defs><radialGradient id="bg"><stop stop-color="#4b2817"/><stop offset="1" stop-color="#0b0705"/></radialGradient><linearGradient id="b" y2="1"><stop stop-color="#5c2e18"/><stop offset="1" stop-color="#1b0a05"/></linearGradient><filter id="s"><feDropShadow dy="25" stdDeviation="20" flood-opacity=".65"/></filter></defs>
- <rect width="900" height="900" fill="url(#bg)"/><circle cx="450" cy="410" r="330" fill="#d69a4c" opacity=".13"/>
- <g filter="url(#s)" transform="translate(160 170) rotate(-6 300 280)"><path d="M55 150 520 70l80 430-470 95z" fill="url(#b)" stroke="#95502a" stroke-width="10"/><path d="M55 150 520 70l22 115-465 86z" fill="#321309"/><path d="M82 257 543 177" stroke="#d49452" stroke-opacity=".65" stroke-width="9"/><g fill="#b76431"><circle cx="205" cy="215" r="13"/><circle cx="398" cy="180" r="10"/><circle cx="310" cy="390" r="12"/><circle cx="490" cy="350" r="13"/></g></g>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 315 420"><image href="/tenants/melt/brownie.webp" width="315" height="420" preserveAspectRatio="xMidYMid slice"/></svg>
