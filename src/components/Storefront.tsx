@@ -10,13 +10,16 @@ type Drawer = "cart" | "assistant" | null;
 
 type DeliveryQuote = {
   cep: string;
+  number: string;
   city: string;
   state: string;
   neighborhood: string;
   street: string;
+  formattedAddress: string;
   distanceKm: number;
   durationMinutes: number | null;
   fee: number;
+  exactNumber: boolean;
   estimated: boolean;
   disclaimer: string;
 };
@@ -67,8 +70,9 @@ export function Storefront({ tenant }: Props) {
     "Entrega",
   );
   const [name, setName] = useState("");
-  const [address, setAddress] = useState("");
   const [deliveryCep, setDeliveryCep] = useState("");
+  const [deliveryNumber, setDeliveryNumber] = useState("");
+  const [addressComplement, setAddressComplement] = useState("");
   const [deliveryQuote, setDeliveryQuote] =
     useState<DeliveryQuote | null>(null);
   const [quoteLoading, setQuoteLoading] = useState(false);
@@ -98,21 +102,15 @@ export function Storefront({ tenant }: Props) {
 
     const onInstall = (event: Event) => {
       event.preventDefault();
-      setInstallEvent(
-        event as Event & { prompt?: () => Promise<void> },
-      );
+      setInstallEvent(event as Event & { prompt?: () => Promise<void> });
     };
 
     window.addEventListener("beforeinstallprompt", onInstall);
-    return () =>
-      window.removeEventListener("beforeinstallprompt", onInstall);
+    return () => window.removeEventListener("beforeinstallprompt", onInstall);
   }, [tenant.slug]);
 
   useEffect(() => {
-    window.localStorage.setItem(
-      `cart:${tenant.slug}`,
-      JSON.stringify(cart),
-    );
+    window.localStorage.setItem(`cart:${tenant.slug}`, JSON.stringify(cart));
   }, [cart, tenant.slug]);
 
   const visibleProducts = tenant.products.filter(
@@ -121,15 +119,10 @@ export function Storefront({ tenant }: Props) {
       (category === "todos" || product.category === category),
   );
 
-  const itemCount = cart.reduce(
-    (sum, line) => sum + line.quantity,
-    0,
-  );
+  const itemCount = cart.reduce((sum, line) => sum + line.quantity, 0);
 
   const productsTotal = cart.reduce((sum, line) => {
-    const product = tenant.products.find(
-      (item) => item.id === line.productId,
-    );
+    const product = tenant.products.find((item) => item.id === line.productId);
     return sum + (product?.price ?? 0) * line.quantity;
   }, 0);
 
@@ -147,20 +140,20 @@ export function Storefront({ tenant }: Props) {
           ),
         }))
         .filter(
-          (
-            entry,
-          ): entry is { line: CartLine; product: Product } =>
+          (entry): entry is { line: CartLine; product: Product } =>
             Boolean(entry.product),
         ),
     [cart, tenant.products],
   );
 
+  function invalidateQuote() {
+    setDeliveryQuote(null);
+    setQuoteError("");
+  }
+
   function changeQuantity(productId: string, amount: number) {
     setCart((current) => {
-      const existing = current.find(
-        (line) => line.productId === productId,
-      );
-
+      const existing = current.find((line) => line.productId === productId);
       if (!existing && amount > 0) {
         return [...current, { productId, quantity: 1 }];
       }
@@ -168,10 +161,7 @@ export function Storefront({ tenant }: Props) {
       return current
         .map((line) =>
           line.productId === productId
-            ? {
-                ...line,
-                quantity: Math.max(0, line.quantity + amount),
-              }
+            ? { ...line, quantity: Math.max(0, line.quantity + amount) }
             : line,
         )
         .filter((line) => line.quantity > 0);
@@ -180,9 +170,16 @@ export function Storefront({ tenant }: Props) {
 
   async function quoteDelivery() {
     const cleanCep = deliveryCep.replace(/\D/g, "");
+    const cleanNumber = deliveryNumber.trim();
 
     if (cleanCep.length !== 8) {
       setQuoteError("Informe um CEP válido com 8 números.");
+      setDeliveryQuote(null);
+      return;
+    }
+
+    if (!cleanNumber) {
+      setQuoteError("Informe o número do endereço.");
       setDeliveryQuote(null);
       return;
     }
@@ -195,7 +192,7 @@ export function Storefront({ tenant }: Props) {
       const response = await fetch("/api/delivery-quote", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cep: cleanCep }),
+        body: JSON.stringify({ cep: cleanCep, number: cleanNumber }),
       });
 
       const data = (await response.json()) as
@@ -226,17 +223,13 @@ export function Storefront({ tenant }: Props) {
     if (!cartProducts.length) {
       return alert("Adicione pelo menos um produto ao pedido.");
     }
+    if (!name.trim()) return alert("Informe seu nome.");
 
-    if (!name.trim()) {
-      return alert("Informe seu nome.");
+    if (orderMode === "Entrega" && !deliveryNumber.trim()) {
+      return alert("Informe o número do endereço.");
     }
-
-    if (orderMode === "Entrega" && !address.trim()) {
-      return alert("Informe o endereço completo para entrega.");
-    }
-
     if (orderMode === "Entrega" && !deliveryQuote) {
-      return alert("Calcule a taxa de entrega pelo CEP antes de finalizar.");
+      return alert("Calcule a taxa usando o CEP e o número antes de finalizar.");
     }
 
     const lines = cartProducts.map(
@@ -254,12 +247,12 @@ export function Storefront({ tenant }: Props) {
       "",
       `Produtos: ${money.format(productsTotal)}`,
       `Modalidade: ${orderMode}`,
-      orderMode === "Entrega"
-        ? `CEP: ${deliveryQuote?.cep ?? deliveryCep}`
-        : "",
-      orderMode === "Entrega"
-        ? `Endereço: ${address.trim()}`
+      orderMode === "Entrega" && deliveryQuote
+        ? `Endereço: ${deliveryQuote.formattedAddress}`
         : `Retirada: ${tenant.operation.deliveryPricing.origin.address}`,
+      orderMode === "Entrega" && addressComplement.trim()
+        ? `Complemento/referência: ${addressComplement.trim()}`
+        : "",
       orderMode === "Entrega" && deliveryQuote
         ? `Distância estimada: ${deliveryQuote.distanceKm.toFixed(1)} km`
         : "",
@@ -277,16 +270,14 @@ export function Storefront({ tenant }: Props) {
 
     if (!tenant.contact.whatsappNumber) {
       navigator.clipboard?.writeText(text);
-      alert(
-        "O pedido foi copiado. Falta cadastrar o WhatsApp comercial.",
-      );
+      alert("O pedido foi copiado. Falta cadastrar o WhatsApp comercial.");
       return;
     }
 
     window.open(
-      `https://wa.me/${
-        tenant.contact.whatsappNumber
-      }?text=${encodeURIComponent(text)}`,
+      `https://wa.me/${tenant.contact.whatsappNumber}?text=${encodeURIComponent(
+        text,
+      )}`,
       "_blank",
       "noopener,noreferrer",
     );
@@ -304,11 +295,8 @@ export function Storefront({ tenant }: Props) {
 
     const normalized = clean.toLocaleLowerCase("pt-BR");
     const match = tenant.faq.find((item) =>
-      item.keywords.some((keyword) =>
-        normalized.includes(keyword),
-      ),
+      item.keywords.some((keyword) => normalized.includes(keyword)),
     );
-
     const response =
       match?.answer ??
       "Posso ajudar com cardápio, preços, entrega, retirada e horário. Para encomendas ou pedidos empresariais, a equipe humana continua o atendimento.";
@@ -335,13 +323,11 @@ export function Storefront({ tenant }: Props) {
           />
           <span>{tenant.brand.name}</span>
         </a>
-
         <nav aria-label="Navegação principal">
           <a href="#cardapio">Cardápio</a>
           <a href="#entrega">Entrega</a>
           <a href="#sobre">Sobre</a>
         </nav>
-
         <div className="header-actions">
           {installEvent && (
             <button
@@ -351,10 +337,7 @@ export function Storefront({ tenant }: Props) {
               Instalar app
             </button>
           )}
-          <button
-            className="cart-trigger"
-            onClick={() => setDrawer("cart")}
-          >
+          <button className="cart-trigger" onClick={() => setDrawer("cart")}>
             <Icon name="bag" /> Pedido <b>{itemCount}</b>
           </button>
         </div>
@@ -365,9 +348,7 @@ export function Storefront({ tenant }: Props) {
           id="inicio"
           className="hero"
           style={
-            {
-              "--hero-image": `url(${tenant.brand.heroImage})`,
-            } as React.CSSProperties
+            { "--hero-image": `url(${tenant.brand.heroImage})` } as React.CSSProperties
           }
         >
           <div className="hero-shade" />
@@ -409,31 +390,27 @@ export function Storefront({ tenant }: Props) {
         <section id="cardapio" className="section catalog-section">
           <div className="section-heading">
             <div>
-              <span className="eyebrow dark">
-                Os favoritos da Melt
-              </span>
+              <span className="eyebrow dark">Os favoritos da Melt</span>
               <h2>Escolha o seu.</h2>
             </div>
             <p>
-              Monte o pedido sem criar conta. Para entrega, o
-              carrinho calcula uma estimativa da taxa usando o CEP.
+              Monte o pedido sem criar conta. Para entrega, o carrinho calcula a
+              taxa usando o CEP e o número do endereço.
             </p>
           </div>
 
           <div className="filters" aria-label="Filtrar cardápio">
-            {(["todos", "brownies", "trufas"] as const).map(
-              (item) => (
-                <button
-                  key={item}
-                  className={category === item ? "active" : ""}
-                  onClick={() => setCategory(item)}
-                >
-                  {item === "todos"
-                    ? "Todos"
-                    : item[0].toUpperCase() + item.slice(1)}
-                </button>
-              ),
-            )}
+            {(["todos", "brownies", "trufas"] as const).map((item) => (
+              <button
+                key={item}
+                className={category === item ? "active" : ""}
+                onClick={() => setCategory(item)}
+              >
+                {item === "todos"
+                  ? "Todos"
+                  : item[0].toUpperCase() + item.slice(1)}
+              </button>
+            ))}
           </div>
 
           <div className="product-grid">
@@ -481,9 +458,8 @@ export function Storefront({ tenant }: Props) {
             <span className="eyebrow">Brownie Melt</span>
             <h2>Intenso por dentro. Irresistível por fora.</h2>
             <p>
-              O site mostra o produto, reduz a distância até o
-              pedido e mantém o atendimento disponível sem
-              interromper a experiência.
+              O site mostra o produto, reduz a distância até o pedido e mantém o
+              atendimento disponível sem interromper a experiência.
             </p>
             <a href="#cardapio">
               Escolher um brownie <Icon name="arrow" />
@@ -496,35 +472,27 @@ export function Storefront({ tenant }: Props) {
             <span className="eyebrow">Entrega própria e retirada</span>
             <h2>Da Melt até você.</h2>
             <p>
-              A taxa é calculada pela distância estimada da rota,
-              saindo da unidade no Progresso.
+              A taxa é calculada pela rota estimada, usando CEP e número, saindo
+              da unidade no Progresso.
             </p>
-
             <div className="fee-bands" aria-label="Faixas de entrega">
-              {tenant.operation.deliveryPricing.bands.map(
-                (band, index) => {
-                  const previous =
-                    tenant.operation.deliveryPricing.bands[index - 1];
-                  const label = previous
-                    ? `${previous.upToKm} a ${band.upToKm} km`
-                    : `Até ${band.upToKm} km`;
-
-                  return (
-                    <div className="fee-band" key={band.upToKm}>
-                      <span>{label}</span>
-                      <strong>{money.format(band.fee)}</strong>
-                    </div>
-                  );
-                },
-              )}
+              {tenant.operation.deliveryPricing.bands.map((band, index) => {
+                const previous = tenant.operation.deliveryPricing.bands[index - 1];
+                const label = previous
+                  ? `${previous.upToKm} a ${band.upToKm} km`
+                  : `Até ${band.upToKm} km`;
+                return (
+                  <div className="fee-band" key={band.upToKm}>
+                    <span>{label}</span>
+                    <strong>{money.format(band.fee)}</strong>
+                  </div>
+                );
+              })}
             </div>
-
             <dl>
               <div>
                 <dt>Saída</dt>
-                <dd>
-                  {tenant.operation.deliveryPricing.origin.address}
-                </dd>
+                <dd>{tenant.operation.deliveryPricing.origin.address}</dd>
               </div>
               <div>
                 <dt>Atendimento</dt>
@@ -532,14 +500,10 @@ export function Storefront({ tenant }: Props) {
               </div>
               <div>
                 <dt>Limite automático</dt>
-                <dd>
-                  Até{" "}
-                  {tenant.operation.deliveryPricing.maxDistanceKm} km
-                </dd>
+                <dd>Até {tenant.operation.deliveryPricing.maxDistanceKm} km</dd>
               </div>
             </dl>
           </div>
-
           <div className="delivery-photo">
             <Image
               src="/tenants/melt/truffle.webp"
@@ -552,13 +516,11 @@ export function Storefront({ tenant }: Props) {
 
         <section id="sobre" className="section about">
           <span className="eyebrow dark">Sobre a Melt</span>
-          <h2>
-            Doces que chegam com carinho e ficam na memória.
-          </h2>
+          <h2>Doces que chegam com carinho e ficam na memória.</h2>
           <p>
-            A experiência digital valoriza a textura, a identidade
-            premium e a conveniência — sem esconder o produto atrás
-            de cadastros, telas ou um chatbot invasivo.
+            A experiência digital valoriza a textura, a identidade premium e a
+            conveniência — sem esconder o produto atrás de cadastros, telas ou
+            um chatbot invasivo.
           </p>
           <a
             className="button dark-button"
@@ -582,12 +544,7 @@ export function Storefront({ tenant }: Props) {
 
       <footer>
         <div>
-          <Image
-            src={tenant.brand.logo}
-            width={88}
-            height={88}
-            alt=""
-          />
+          <Image src={tenant.brand.logo} width={88} height={88} alt="" />
           <p>{tenant.brand.tagline}</p>
         </div>
         <div>
@@ -618,10 +575,7 @@ export function Storefront({ tenant }: Props) {
             <span className="eyebrow dark">Seu pedido</span>
             <h2>Quase lá.</h2>
           </div>
-          <button
-            onClick={() => setDrawer(null)}
-            aria-label="Fechar"
-          >
+          <button onClick={() => setDrawer(null)} aria-label="Fechar">
             <Icon name="close" />
           </button>
         </div>
@@ -640,17 +594,11 @@ export function Storefront({ tenant }: Props) {
                   <small>{money.format(product.price)} cada</small>
                 </div>
                 <div className="quantity">
-                  <button
-                    onClick={() =>
-                      changeQuantity(product.id, -1)
-                    }
-                  >
+                  <button onClick={() => changeQuantity(product.id, -1)}>
                     <Icon name="minus" />
                   </button>
                   <span>{line.quantity}</span>
-                  <button
-                    onClick={() => changeQuantity(product.id, 1)}
-                  >
+                  <button onClick={() => changeQuantity(product.id, 1)}>
                     <Icon name="plus" />
                   </button>
                 </div>
@@ -670,14 +618,9 @@ export function Storefront({ tenant }: Props) {
             <select
               value={orderMode}
               onChange={(event) => {
-                const value = event.target.value as
-                  | "Entrega"
-                  | "Retirada";
+                const value = event.target.value as "Entrega" | "Retirada";
                 setOrderMode(value);
-                if (value === "Retirada") {
-                  setDeliveryQuote(null);
-                  setQuoteError("");
-                }
+                if (value === "Retirada") invalidateQuote();
               }}
             >
               <option>Entrega</option>
@@ -696,18 +639,35 @@ export function Storefront({ tenant }: Props) {
 
           {orderMode === "Entrega" && (
             <>
-              <div className="quote-row">
+              <div className="quote-address-grid">
                 <label>
                   CEP
                   <input
                     inputMode="numeric"
+                    autoComplete="postal-code"
                     value={deliveryCep}
                     onChange={(event) => {
                       setDeliveryCep(formatCep(event.target.value));
-                      setDeliveryQuote(null);
-                      setQuoteError("");
+                      invalidateQuote();
                     }}
                     placeholder="00000-000"
+                  />
+                </label>
+                <label>
+                  Número
+                  <input
+                    inputMode="numeric"
+                    autoComplete="address-line2"
+                    value={deliveryNumber}
+                    onChange={(event) => {
+                      setDeliveryNumber(
+                        event.target.value
+                          .replace(/[^0-9A-Za-zÀ-ÿ\-/ ]/g, "")
+                          .slice(0, 16),
+                      );
+                      invalidateQuote();
+                    }}
+                    placeholder="Ex.: 120"
                   />
                 </label>
                 <button
@@ -721,40 +681,29 @@ export function Storefront({ tenant }: Props) {
 
               {deliveryQuote && (
                 <div className="quote-result">
+                  <strong className="quote-address">
+                    {deliveryQuote.formattedAddress}
+                  </strong>
                   <div>
                     <span>Distância estimada</span>
-                    <strong>
-                      {deliveryQuote.distanceKm.toFixed(1)} km
-                    </strong>
+                    <strong>{deliveryQuote.distanceKm.toFixed(1)} km</strong>
                   </div>
                   <div>
                     <span>Taxa de entrega</span>
-                    <strong>
-                      {money.format(deliveryQuote.fee)}
-                    </strong>
+                    <strong>{money.format(deliveryQuote.fee)}</strong>
                   </div>
-                  <small>
-                    {deliveryQuote.neighborhood
-                      ? `${deliveryQuote.neighborhood}, `
-                      : ""}
-                    {deliveryQuote.city}.{" "}
-                    {deliveryQuote.disclaimer}
-                  </small>
+                  <small>{deliveryQuote.disclaimer}</small>
                 </div>
               )}
 
-              {quoteError && (
-                <p className="quote-error">{quoteError}</p>
-              )}
+              {quoteError && <p className="quote-error">{quoteError}</p>}
 
               <label>
-                Endereço completo
+                Complemento ou referência <small>(opcional)</small>
                 <input
-                  value={address}
-                  onChange={(event) =>
-                    setAddress(event.target.value)
-                  }
-                  placeholder="Rua, número, bairro e complemento"
+                  value={addressComplement}
+                  onChange={(event) => setAddressComplement(event.target.value)}
+                  placeholder="Apto, bloco, condomínio ou referência"
                 />
               </label>
             </>
@@ -763,12 +712,8 @@ export function Storefront({ tenant }: Props) {
           {orderMode === "Retirada" && (
             <div className="pickup-card">
               <span>Retirada em</span>
-              <strong>
-                {tenant.operation.deliveryPricing.origin.address}
-              </strong>
-              <small>
-                A equipe confirma o horário antes do deslocamento.
-              </small>
+              <strong>{tenant.operation.deliveryPricing.origin.address}</strong>
+              <small>A equipe confirma o horário antes do deslocamento.</small>
             </div>
           )}
 
@@ -777,13 +722,9 @@ export function Storefront({ tenant }: Props) {
             <b>{money.format(orderTotal)}</b>
           </div>
 
-          <button
-            className="button primary full"
-            onClick={checkout}
-          >
+          <button className="button primary full" onClick={checkout}>
             Finalizar pelo WhatsApp
           </button>
-
           <small>{tenant.operation.deliveryPricing.disclaimer}</small>
         </div>
       </aside>
@@ -796,25 +737,17 @@ export function Storefront({ tenant }: Props) {
       >
         <div className="drawer-head">
           <div>
-            <span className="eyebrow dark">
-              Atendimento opcional
-            </span>
+            <span className="eyebrow dark">Atendimento opcional</span>
             <h2>Como posso ajudar?</h2>
           </div>
-          <button
-            onClick={() => setDrawer(null)}
-            aria-label="Fechar"
-          >
+          <button onClick={() => setDrawer(null)} aria-label="Fechar">
             <Icon name="close" />
           </button>
         </div>
 
         <div className="messages">
           {messages.map((message, index) => (
-            <p
-              key={`${message.from}-${index}`}
-              className={message.from}
-            >
+            <p key={`${message.from}-${index}`} className={message.from}>
               {message.text}
             </p>
           ))}
@@ -822,10 +755,7 @@ export function Storefront({ tenant }: Props) {
 
         <div className="quick-questions">
           {tenant.faq.slice(0, 4).map((item) => (
-            <button
-              key={item.question}
-              onClick={() => ask(item.question)}
-            >
+            <button key={item.question} onClick={() => ask(item.question)}>
               {item.question}
             </button>
           ))}
@@ -840,18 +770,15 @@ export function Storefront({ tenant }: Props) {
         >
           <input
             value={assistantInput}
-            onChange={(event) =>
-              setAssistantInput(event.target.value)
-            }
+            onChange={(event) => setAssistantInput(event.target.value)}
             placeholder="Digite sua dúvida…"
           />
           <button>Enviar</button>
         </form>
 
         <p className="assistant-note">
-          Nesta sprint, o assistente usa a base segura de perguntas
-          frequentes. A IA real entra na Sprint 2, com transferência
-          para atendimento humano.
+          Nesta sprint, o assistente usa a base segura de perguntas frequentes.
+          A IA real entra na Sprint 2, com transferência para atendimento humano.
         </p>
       </aside>
     </>
