@@ -25,7 +25,7 @@ export const meltTenant: TenantConfig = {
     delivery: "Entrega própria em Blumenau",
     pickup: true,
     deliveryFeeNotice:
-      "A taxa é estimada por CEP e pela distância percorrida nas ruas.",
+      "A taxa é estimada usando o CEP, o número e a distância percorrida nas ruas.",
     deliveryPricing: {
       origin: {
         address: "Rua Rui Barbosa, 785 — Progresso, Blumenau — SC",
@@ -40,7 +40,7 @@ export const meltTenant: TenantConfig = {
         { upToKm: 12, fee: 18.99 },
       ],
       disclaimer:
-        "Estimativa calculada entre os pontos de referência dos CEPs. Número, complemento, bloqueios e alterações de rota podem exigir confirmação pela equipe.",
+        "A rota usa CEP e número. Condomínio, entrada, complemento, bloqueios e alterações viárias podem exigir confirmação pela equipe.",
     },
   },
   products: [
@@ -111,7 +111,7 @@ export const meltTenant: TenantConfig = {
     {
       question: "Vocês entregam onde?",
       answer:
-        "Fazemos entrega própria em Blumenau. No carrinho, informe o CEP para receber uma estimativa da taxa pela distância da rota.",
+        "Fazemos entrega própria em Blumenau. No carrinho, informe o CEP e o número para receber uma estimativa da taxa pela distância da rota.",
       keywords: ["entrega", "bairro", "onde", "taxa", "frete", "cep"],
     },
     {
