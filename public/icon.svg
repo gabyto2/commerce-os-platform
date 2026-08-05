@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs><radialGradient id="g" cx="38%" cy="30%"><stop stop-color="#5a3220"/><stop offset="1" stop-color="#090604"/></radialGradient></defs>
+  <rect width="512" height="512" rx="112" fill="#090604"/>
+  <circle cx="256" cy="256" r="190" fill="url(#g)" stroke="#d6a45f" stroke-width="10"/>
+  <text x="256" y="242" text-anchor="middle" fill="#f0c278" font-size="82" font-family="Georgia,serif" font-style="italic">Melt</text>
+  <text x="256" y="306" text-anchor="middle" fill="#fff7ed" font-size="34" font-family="Arial,sans-serif" letter-spacing="8">BROWNIES</text>
+</svg>
