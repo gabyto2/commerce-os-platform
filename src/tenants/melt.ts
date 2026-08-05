@@ -22,9 +22,26 @@ export const meltTenant: TenantConfig = {
   },
   operation: {
     hours: "Das 8h às 2h",
-    delivery: "Entrega em toda Blumenau",
+    delivery: "Entrega própria em Blumenau",
     pickup: true,
-    deliveryFeeNotice: "A taxa é calculada conforme o endereço e confirmada pela equipe.",
+    deliveryFeeNotice:
+      "A taxa é estimada por CEP e pela distância percorrida nas ruas.",
+    deliveryPricing: {
+      origin: {
+        address: "Rua Rui Barbosa, 785 — Progresso, Blumenau — SC",
+        cep: "89026-601",
+      },
+      maxDistanceKm: 12,
+      bands: [
+        { upToKm: 3, fee: 7.99 },
+        { upToKm: 5, fee: 9.99 },
+        { upToKm: 7, fee: 12.99 },
+        { upToKm: 9, fee: 15.99 },
+        { upToKm: 12, fee: 18.99 },
+      ],
+      disclaimer:
+        "Estimativa calculada entre os pontos de referência dos CEPs. Número, complemento, bloqueios e alterações de rota podem exigir confirmação pela equipe.",
+    },
   },
   products: [
     {
@@ -93,13 +110,15 @@ export const meltTenant: TenantConfig = {
     },
     {
       question: "Vocês entregam onde?",
-      answer: "Entregamos em toda Blumenau. A taxa é calculada conforme o endereço.",
-      keywords: ["entrega", "bairro", "onde", "taxa"],
+      answer:
+        "Fazemos entrega própria em Blumenau. No carrinho, informe o CEP para receber uma estimativa da taxa pela distância da rota.",
+      keywords: ["entrega", "bairro", "onde", "taxa", "frete", "cep"],
     },
     {
       question: "Posso retirar?",
-      answer: "Sim. É possível retirar no local após a confirmação do pedido pela equipe.",
-      keywords: ["retirar", "retirada", "buscar"],
+      answer:
+        "Sim. É possível retirar na Rua Rui Barbosa, 785, Progresso, após a confirmação do pedido.",
+      keywords: ["retirar", "retirada", "buscar", "endereço", "endereco"],
     },
     {
       question: "Qual produto vocês recomendam?",

@@ -11,6 +11,21 @@ export type Product = {
   available: boolean;
 };
 
+export type DeliveryFeeBand = {
+  upToKm: number;
+  fee: number;
+};
+
+export type DeliveryPricing = {
+  origin: {
+    address: string;
+    cep: string;
+  };
+  maxDistanceKm: number;
+  bands: DeliveryFeeBand[];
+  disclaimer: string;
+};
+
 export type TenantConfig = {
   slug: string;
   brand: {
@@ -34,6 +49,7 @@ export type TenantConfig = {
     delivery: string;
     pickup: boolean;
     deliveryFeeNotice: string;
+    deliveryPricing: DeliveryPricing;
   };
   products: Product[];
   faq: Array<{ question: string; answer: string; keywords: string[] }>;
