@@ -17,13 +17,13 @@
 }
 .fee-band span{color:#c9bbb1;font-size:.86rem}
 .fee-band strong{color:var(--gold-2);white-space:nowrap}
-.quote-row{
+.quote-address-grid{
   display:grid;
-  grid-template-columns:1fr auto;
+  grid-template-columns:1fr .62fr auto;
   gap:9px;
   align-items:end;
 }
-.quote-row label{min-width:0}
+.quote-address-grid label{min-width:0}
 .quote-button{
   min-height:43px;
   border:0;
@@ -50,6 +50,12 @@
 }
 .quote-result span{color:#5b6d60;font-size:.85rem}
 .quote-result strong{color:#173e26}
+.quote-result .quote-address{
+  display:block;
+  padding-bottom:10px;
+  border-bottom:1px solid rgba(46,107,69,.16);
+  line-height:1.45;
+}
 .quote-result small{color:#5f6d63;line-height:1.45}
 .quote-error{
   margin:0;
@@ -78,6 +84,6 @@
 .grand-total b{font-size:1.22rem}
 @media(max-width:520px){
   .fee-bands{grid-template-columns:1fr}
-  .quote-row{grid-template-columns:1fr}
-  .quote-button{width:100%}
+  .quote-address-grid{grid-template-columns:1fr 1fr}
+  .quote-address-grid .quote-button{grid-column:1/-1;width:100%}
 }
